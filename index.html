@@ -180,7 +180,6 @@
     }
     .mapReveal .small{ margin:0; color: var(--muted); font-size:13px; font-weight:700; }
 
-    /* ✅ Imagen inicial (intro) */
     .heroImg{
       width:100%;
       height:auto;
@@ -275,21 +274,30 @@
         }
       };
 
+      // ✅ Misión 2 ya NO es acertijo: es "poner un código"
+      // IMPORTANTE: me pediste poner el texto tal cual:
+      const GATE_TEXT_M2 = "una vez con las flores mandale fotico al nene que te dara el codigo, ponlo talcual";
+
       const RIDDLES = [
         { q: "Acertijo: Entre aves y metros, segundo finde en madrid, el nene te esperaba con una sorpresa en las manos ¿Que fue?", answers: ["flor","rosa","flores","rosas"] },
-        { q: "Acertijo: Es divinooo, chocolatado, se come con helado,se preparo el  primer finde en madrid.¿Que es?", answers: ["brownie","un brownie"] },
+
+        // M2: "código" (sin respuesta hardcodeada aquí). Se valida contra un código que tú pondrás.
+        // Dejo un placeholder seguro: cambia CODE_M2 por tu código real cuando lo tengas.
+        { q: "Código:", answers: [] },
+
         { q: "Acertijo: Se toma, previo al horrorland, invitacion de tu mama.¿ que bebida es ?", answers: ["vino","un vino"] }
       ];
 
-      // ✅ Solo URLs (sin imágenes de mapa)
+      // ✅ PON AQUÍ el código real de la misión 2 cuando lo tengas (ej: "1234" o "NEA")
+      // Por ahora dejo un placeholder:
+      const CODE_M2 = "yesebigotenena";
+
       const MAP_LINKS = [
-        { label: "Busca el presente ", url: "https://www.google.com/maps/search/Rosistirem+Cornell%C3%A0+de+Llobregat" },
-        { label: "Se busca el brownie en la siguiente ubicación", url: "https://www.google.com/maps/search/365+Obrador+Cornell%C3%A0+de+Llobregat" },
+        { label: "Busca el presente", url: "https://www.google.com/maps/search/Rosistirem+Cornell%C3%A0+de+Llobregat" },
+        { label: "Se busca postre en la siguiente ubicación", url: "https://www.google.com/maps/dir/?api=1&destination=Pastelería+Abril" },
         { label: "Compra vino y vuelve a casa", url: "https://www.google.com/maps/search/Lidl+Esplugues+de+Llobregat" }
       ];
 
-      // ✅ Imagen de introducción (ponla en la misma carpeta)
-      // Cambia el nombre si tu archivo se llama distinto, por ejemplo: "intro.png"
       const INTRO_IMAGE = {
         src: "intro.jpg",
         alt: "Imagen de introducción de la aventura"
@@ -299,7 +307,7 @@
         step: "instructions",
         mission: 0,
         riddleSolved: [false,false,false],
-        mapsOpened:   [false,false,false], // debe pulsar Maps para habilitar Hecho ✅
+        mapsOpened:   [false,false,false],
         missionDone:  [false,false,false]
       };
 
@@ -413,28 +421,38 @@
         else if(state.step === "mission"){
           const i = state.mission;
           const m = SCREENS.missions[i];
-          const rid = RIDDLES[i];
           const link = MAP_LINKS[i];
 
           const solved = !!state.riddleSolved[i];
           const mapsOpened = !!state.mapsOpened[i];
           const done = !!state.missionDone[i];
 
-          const doneEnabled = solved && mapsOpened && !done; // requiere pulsar Maps
+          const doneEnabled = solved && mapsOpened && !done;
           const nextEnabled = done;
+
+          // ✅ misión 2: panel especial (pediste “ponlo tal cual”)
+          const isMission2 = (i === 1);
 
           screen.innerHTML = `
             <div class="badge ${done ? "ok" : ""}">${done ? "Completada ✅" : "Paso a paso"}</div>
             <h2 class="title">${m.title}</h2>
 
             ${!solved ? `
-              <div class="riddle" aria-label="Acertijo">
-                <p class="q">${rid.q}</p>
-                <p class="hint">Resuélvelo para desbloquear la ubicación.</p>
+              <div class="riddle" aria-label="${isMission2 ? "Código" : "Acertijo"}">
+                ${isMission2 ? `
+                  <p class="q">${GATE_TEXT_M2}</p>
+                  <p class="hint">Escribe el código que te dará el nene.</p>
+                ` : `
+                  <p class="q">${RIDDLES[i].q}</p>
+                  <p class="hint">Resuélvelo para desbloquear la ubicación.</p>
+                `}
                 <div class="inputRow">
                   <input id="answer" type="text" autocomplete="off" inputmode="text"
-                    placeholder="Escribe tu respuesta..." aria-label="Respuesta del acertijo" />
-                  <button id="checkBtn" class="miniBtn" type="button" aria-label="Comprobar acertijo">Comprobar</button>
+                    placeholder="${isMission2 ? "Introduce el código..." : "Escribe tu respuesta..."}"
+                    aria-label="${isMission2 ? "Código" : "Respuesta del acertijo"}" />
+                  <button id="checkBtn" class="miniBtn" type="button" aria-label="${isMission2 ? "Comprobar código" : "Comprobar acertijo"}">
+                    Comprobar
+                  </button>
                 </div>
               </div>
             ` : `
@@ -472,8 +490,26 @@
           const checkBtn = document.getElementById("checkBtn");
           if(checkBtn){
             checkBtn.onclick = () => {
-              const answer = normalize(document.getElementById("answer").value);
-              const ok = rid.answers.map(a => normalize(a)).includes(answer);
+              const typed = normalize(document.getElementById("answer").value);
+
+              let ok = false;
+
+              if(i === 1){
+                // ✅ Misión 2: valida contra el código
+                ok = (typed === normalize(CODE_M2));
+                if(ok){
+                  state.riddleSolved[i] = true;
+                  saveState();
+                  showToast("Código correcto ✅ Ubicación desbloqueada");
+                  render();
+                }else{
+                  showToast("Código incorrecto… prueba otra vez 😌");
+                }
+                return;
+              }
+
+              // M1 y M3: acertijos normales
+              ok = RIDDLES[i].answers.map(a => normalize(a)).includes(typed);
               if(ok){
                 state.riddleSolved[i] = true;
                 saveState();
